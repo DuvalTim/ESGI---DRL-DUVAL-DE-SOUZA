@@ -13,17 +13,33 @@ public class PolicyIteration : MonoBehaviour
         public float Reward = 0;
         public float Value = 0;
         public float Action = 0;
+
+        public Case()
+        {
+            Reward = 0;
+            Value = 0;
+            Action = 0;
+        }
+
     }
 
-    public Case[,] Map = new Case[18, 18];
+    private Case[,] Map = new Case[18, 18];
 
 
     void Start()
     {
+        Map = new Case[18, 18];
+        for (int i = 0; i < Map.GetLength(0); i++)
+        {
+            for (int j = 0; j < Map.GetLength(1); j++)
+            {
+                Map[i, j] = new Case();
+            }
+        }
         //Sortie
         Map[17, 17].Reward = 1;
         Map[17, 17].Value = 1;
-
+        //Policy_Evaluation();
     }
     public void Policy_Evaluation()
     {
@@ -39,9 +55,9 @@ public class PolicyIteration : MonoBehaviour
         }
 
 
-        while (delta < 0.01f)
+        for ( int i = 0; i < 10000 && delta < 0.01f; i++)
         {
-            delta = 0;
+            delta = int.MaxValue;
             for (int x = 0; x < 18; x++)
             {
                 for (int y = 0; y < 18; y++)
@@ -49,7 +65,8 @@ public class PolicyIteration : MonoBehaviour
                     float tempVal = Map[x, y].Value;
                     Vector2 NextAction = ActionManager(x, y, Map);
                     Map[x, y].Value = Map[(int)NextAction.x, (int)NextAction.y].Value;
-                    delta = (int)Mathf.Max(delta, Mathf.Abs(tempVal - Map[x, y].Value));
+                    delta = (int)Mathf.Min(delta, Mathf.Abs(tempVal - Map[x, y].Value));
+                    Debug.Log(delta);
                 }
             }
         }
@@ -64,7 +81,7 @@ public class PolicyIteration : MonoBehaviour
             {
                 for (int a = 1; a < 5; a++)
                 {
-                    
+
                 }
             }
         }
@@ -95,10 +112,10 @@ public class PolicyIteration : MonoBehaviour
             default:
                 break;
         }
-        return new Vector2(x,y);
+        return new Vector2(x, y);
     }
 
-    
+
 
 }
 
