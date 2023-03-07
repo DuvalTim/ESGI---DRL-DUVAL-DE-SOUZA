@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using Assets.DRL;
+using Environment = Assets.DRL.Environment;
 using Random = UnityEngine.Random;
 
 public class TestScript : MonoBehaviour
@@ -20,34 +22,79 @@ public class TestScript : MonoBehaviour
 
     [SerializeField]
     private GameObject CaseDisplayPrefab;
+
     [SerializeField]
     private GameObject CanvasObject;
+
     private List<CaseDisplay> CaseDisplay = new List<CaseDisplay>();
+
+
+    [SerializeField]
+    private Toggle ObstacleToggle;
+
+    [SerializeField]
+    private Text DebugText;
+
+    private float gamma = 1.0f;
+
+    [SerializeField]
+    private Slider GammaSliderDecrease;
+
+    [SerializeField]
+    private Slider StartValuePolicySlider;
+
+    [SerializeField]
+    private Slider UpdateTimeSlider;
 
     private void Update()
     {
-        if (Input.GetKeyDown(KeyCode.P))
+        if (false)
+        //if (Input.GetKeyDown(KeyCode.P))
         {
-            Play = !Play;
-            if (Play)
-            {
-                InstantiateDisplay();
-                StartGame();
-            }
         }
         else
         {
-            if (UpdateTime != 0 && UpdateTime + LastUpdate < Time.time)
+            if (UpdateTimeSlider.value != 0 && UpdateTimeSlider.value + LastUpdate < Time.time)
             {
                 LastUpdate = Time.time;
                 StepGame();
             }
         }
-        if (Input.GetKeyDown(KeyCode.I)) InitPolicy();
-        if (Input.GetKeyDown(KeyCode.E))
+    }
+
+    private void Start()
+    {
+        GammaSliderDecrease.onValueChanged.AddListener(OnSliderValueChanged);
+        StartValuePolicySlider.onValueChanged.AddListener(OnSliderValueChanged);
+        UpdateTimeSlider.onValueChanged.AddListener(OnSliderValueChanged);
+    }
+
+    public void StartPolItButtonClick()
+    {
+        Play = !Play;
+        if (Play)
         {
-            gamma = 1.0f;
-            PolicyEvaluation();
+            InstantiateDisplay();
+            StartGame();
+        }
+        else
+        {
+            StartCoroutine(AutoRestart());
+        }
+        InitPolicy();
+        gamma = 1.0f;
+        PolicyEvaluation();
+    }
+
+    private System.Collections.IEnumerator AutoRestart()
+    {
+        yield return new WaitForEndOfFrame();
+        yield return new WaitForEndOfFrame();
+        if (!Play)
+        {
+            Play = !Play;
+            InstantiateDisplay();
+            StartGame();
         }
     }
 
@@ -97,6 +144,11 @@ public class TestScript : MonoBehaviour
         }
     }
 
+    private void OnSliderValueChanged(float value)
+    {
+        DebugText.text = $"{Math.Round(value, 3)}";
+    }
+
     private void UpdatePlayerPosition()
     {
         for (int i = 0; i < States.GetLength(0); i++)
@@ -107,19 +159,6 @@ public class TestScript : MonoBehaviour
                 {
                     Player.transform.position = new Vector3(i, 0, j);
                 }
-            }
-        }
-    }
-
-    private void StepGame()
-    {
-        if (Play)
-        {
-            var val = Environment.Step();
-            if (val)
-            {
-                Play = false;
-                UpdatePlayerPosition();
             }
         }
     }
@@ -139,7 +178,7 @@ public class TestScript : MonoBehaviour
         {
             for (int j = 0; j < States.GetLength(1); j++)
             {
-                if (i == States.GetLength(0) - 1 && j == States.GetLength(1) -1)
+                if (i == States.GetLength(0) - 1 && j == States.GetLength(1) - 1)
                 {
                     break;
                 }
@@ -163,7 +202,10 @@ public class TestScript : MonoBehaviour
             }
         }
         States[States.GetLength(0) - 1, States.GetLength(1) - 1].Reward = 1.0f;
-        RandomObstacles();
+        if (ObstacleToggle.isOn)
+        {
+            RandomObstacles();
+        }
         Environment = new Environment(States, States[0, 0], new State[] { States[States.GetLength(0) - 1, States.GetLength(1) - 1] });
         Environment.Init(Agent);
         Play = true;
@@ -171,6 +213,19 @@ public class TestScript : MonoBehaviour
         //    Play = false; 
 
         //});
+    }
+
+    private void StepGame()
+    {
+        if (Play)
+        {
+            var val = Environment.PolItStep();
+            if (val)
+            {
+                Play = false;
+                UpdatePlayerPosition();
+            }
+        }
     }
 
     private void RandomObstacles()
@@ -189,18 +244,16 @@ public class TestScript : MonoBehaviour
 
     private void InitPolicy()
     {
-        float baseValue = Random.Range(0, .5f);
+        //float baseValue = Random.Range(0, .5f);
         for (int i = 0; i < States.GetLength(0); i++)
         {
             for (int j = 0; j < States.GetLength(1); j++)
             {
-                States[i, j].Value = baseValue;
+                States[i, j].Value = StartValuePolicySlider.value;
                 States[i, j].RandomPolicy();
             }
         }
     }
-
-    private float gamma = 1.0f;
 
     private void PolicyEvaluation()
     {
@@ -214,13 +267,13 @@ public class TestScript : MonoBehaviour
                 for (int j = 0; j < States.GetLength(1); j++)
                 {
                     float temp = States[i, j].Value;
-                    States[i, j].Value = States[i, j].GetFuturValue(gamma);
+                    States[i, j].Value = States[i, j].GetFuturValuePolIt(gamma);
                     delta = Mathf.Max(delta, Mathf.Abs(temp - States[i, j].Value));
                 }
             }
-            gamma = Mathf.Max(0.01f, gamma - 0.005f);
+            gamma = Mathf.Max(0.01f, gamma - GammaSliderDecrease.value);
             count++;
-        } while (delta < 0.01f && count < 50000);
+        } while (delta < 0.01f && count < 10000);
         Debug.Log("COunt " + count);
         Debug.Log("delta " + delta);
         PolicyOptimisation();
@@ -242,131 +295,5 @@ public class TestScript : MonoBehaviour
                 }
             }
         }
-    }
-}
-
-public class State
-{
-    public string Name;
-    public List<State> ReachableStates;
-    public float Reward;
-    public float Value { get; set; }
-    public State BestActionState;
-
-    public State(float reward, string name, float value = 0)
-    {
-        Reward = reward;
-        Name = name;
-        ReachableStates = new List<State>();
-        Value = value;
-    }
-
-    public void AddReachableStates(State reachableStates)
-    {
-        ReachableStates.Add(reachableStates);
-    }
-
-    public State GetRandomAction()
-    {
-        if (ReachableStates?.Count != 0)
-        {
-            return ReachableStates[UnityEngine.Random.Range(0, ReachableStates.Count)];
-        }
-        return this;
-    }
-
-    internal State BestValueArgMax()
-    {
-        if (ReachableStates?.Count != 0)
-        {
-            State res = ReachableStates[0];
-            for (int i = 1; i < ReachableStates.Count; i++)
-            {
-                if (res.Value < ReachableStates[i].Value)
-                {
-                    res = ReachableStates[i];
-                }
-            }
-            return res;
-        }
-        return this;
-    }
-
-    internal void RandomPolicy()
-    {
-        BestActionState = ReachableStates?.Count != 0 ? ReachableStates[Random.Range(0, ReachableStates.Count)] : this;
-    }
-
-    internal float GetFuturValue(float gamma)
-    {
-        var e = Reward;
-        return e + gamma * (BestActionState == this ? Value : BestActionState.Value);
-    }
-
-    public static bool operator ==(State state1, State state2)
-    {
-        return state1.Name == state2.Name;
-    }
-
-
-    public static bool operator !=(State state1, State state2)
-    {
-        return !(state1 == state2);
-    }
-}
-
-public class Agent
-{
-    public State State;
-    public List<State> AllStatesDone;
-
-    internal void Init(State beginState)
-    {
-        State = beginState;
-        AllStatesDone = new List<State>();
-        AllStatesDone.Add(beginState);
-    }
-
-    internal void DoAction(State newState)
-    {
-        State = newState;
-        AllStatesDone.Add(newState);
-    }
-}
-
-public class Environment
-{
-    public State[,] AllStates;
-    public State BeginState;
-    public State[] EndStates;
-    public Agent m_Agent;
-    public Action OnEndStateReached;
-
-    public Environment(State[,] allstates, State beginState, State[] endStates)
-    {
-        AllStates = allstates;
-        BeginState = beginState;
-        EndStates = endStates;
-    }
-
-    public void Init(Agent agent)
-    {
-        m_Agent = agent;
-        m_Agent.Init(BeginState);
-    }
-
-    public bool Step()
-    {
-        State newState = m_Agent.State.GetRandomAction();
-        m_Agent.DoAction(newState);
-        for (int i = 0; i < EndStates.Length; i++)
-        {
-            if (newState == EndStates[i])
-            {
-                OnEndStateReached?.Invoke();
-                return true;
-            }
-        }
-        return false;
     }
 }
