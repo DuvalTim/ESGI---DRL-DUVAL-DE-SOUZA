@@ -1465,8 +1465,11 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   Player: {fileID: 1225316282}
-  MapDimension: 6
+  MapDimension: 8
   UpdateTime: 0
+  MAX_ITERATION: 10000
+  THETA: 0.0001
+  STARTGAMMA: 0.9
   DisplayReward: 1
   CaseDisplayPrefab: {fileID: 3026702824087005239, guid: 49bfc6e405419b041aa6558b2df417d5, type: 3}
   CanvasObject: {fileID: 1236211259}
@@ -1477,9 +1480,7 @@ MonoBehaviour:
   StartGameObject: {fileID: 1676860747}
   AlgoSelected: {fileID: 2071745318}
   ObsSelected: {fileID: 695238540}
-  MAX_ITERATION: 10000
-  THETA: 0.0001
-  STARTGAMMA: 0.9
+  NbEpisodes: 10
 --- !u!4 &665625860
 Transform:
   m_ObjectHideFlags: 0
