@@ -77,7 +77,8 @@ namespace Assets.DRL
 
         internal void RandomPolicy()
         {
-            BestActionState = ReachableStates?.Count != 0 ? ReachableStates[UnityEngine.Random.Range(0, ReachableStates.Count)] : this;
+            var rand = new Random();
+            BestActionState = ReachableStates?.Count != 0 ? ReachableStates[rand.Next(0, ReachableStates.Count)] : this;
         }
 
         internal float GetFuturValuePolIt(float gamma)

@@ -100,6 +100,9 @@ public class TestScript : MonoBehaviour
     {
 
     }
+
+
+    private float StartTime;
     private void OnStartButtonClick()
     {
         Play = !Play;
@@ -116,17 +119,26 @@ public class TestScript : MonoBehaviour
         }
         GammaValue = STARTGAMMA;
 
-        
+
+        StartTime = Time.time;
+        DebugText.text = "Started";
         switch (AlgoSelected.value)
         {
             case 0:
-                Debug.Log("Starting InitPolicy");
-                InitPolicy();
-                PolicyEvaluation();
+                Debug.Log("FirstVisitMCPrediction");
+                new System.Threading.Thread(
+                    () => {
+                        InitPolicy();
+                        PolicyEvaluation();
+                    }).Start();
+                //FirstVisitMCPrediction();
                 break;
             case 1:
                 Debug.Log("Starting ValueIterationProcess");
-                ValueIterationProcess(); 
+                new System.Threading.Thread(
+                    () => {
+                        ValueIterationProcess();
+                    }).Start();
                 break;
             default:
                 // code block
@@ -139,7 +151,7 @@ public class TestScript : MonoBehaviour
         //PolicyEvaluation();
 
         // pol it
-        
+
     }
 
     private System.Collections.IEnumerator AutoRestart()
@@ -308,12 +320,12 @@ public class TestScript : MonoBehaviour
 
     private void RandomObstacles()
     {
-       List<Vector2> ObstacleList = new List<Vector2>();
+        List<Vector2> ObstacleList = new List<Vector2>();
         for (int i = 0; i < States.GetLength(0) - 1; i++)
         {
-            for (int j = 0; j < States.GetLength(1) - 1; j++)
+            for (int j = 1; j < States.GetLength(1) - 1; j++)
             {
-                if (Random.Range(0, 10) < 1.5f && !(i<2 && j<2 ))
+                if (Random.Range(0, 10) < 1.5f && !(i < 2 && j < 2))
                 {
                     States[i, j].DefineAsObstacle(-1);
                     ObstacleList.Add(new Vector2(i, j));
@@ -325,7 +337,7 @@ public class TestScript : MonoBehaviour
 
     private void UsePreviousObstacles()
     {
-        foreach(Vector2 c in PreviousObstacleList)
+        foreach (Vector2 c in PreviousObstacleList)
         {
             States[(int)c[0], (int)c[1]].DefineAsObstacle(-1);
         }
@@ -362,7 +374,7 @@ public class TestScript : MonoBehaviour
             }
             GammaValue = Mathf.Max(0.01f, GammaValue - GammaSliderDecrease.value);
             count++;
-        } while (delta < MAX_ITERATION && count < MAX_ITERATION);
+        } while (delta > THETA && count < MAX_ITERATION);
         Debug.Log("COunt " + count);
         Debug.Log("delta " + delta);
         PolicyOptimisation();
@@ -381,9 +393,12 @@ public class TestScript : MonoBehaviour
                 {
                     Debug.Log("Not optimal");
                     PolicyEvaluation();
+                    break;
                 }
             }
         }
+        DebugText.text = "Finish";
+        Debug.Log($"Play time :{Time.time - StartTime}");
     }
 
     private void ValueIterationProcess()
@@ -411,6 +426,8 @@ public class TestScript : MonoBehaviour
         } while (delta > THETA && count < MAX_ITERATION);
         Debug.Log("COunt " + count);
         Debug.Log("delta " + delta);
+        DebugText.text = "Finish"; 
+        Debug.Log($"Play time :{Time.time - StartTime}");
     }
 
     private void InitValueIt()
@@ -427,13 +444,16 @@ public class TestScript : MonoBehaviour
 
 
     public int NbEpisodes = 10;
-    private void FirstVisitMCPrediction()
+
+
+
+    private void FirstVisitMCPrediction(bool firstVisit = true)
     {
         ValueIterationProcess();
         Environment currEnv = Environment;
 
         // reset stats
-        foreach(var item in States)
+        foreach (var item in States)
         {
             item.ReturnsValue = 0;
             item.NValue = 0;
@@ -450,8 +470,10 @@ public class TestScript : MonoBehaviour
             } while (!finished);
 
             float gVal = 0;
+
             for (int j = currAg.AllStatesDone.Count - 1; j >= 0; j--)
             {
+
                 try
                 {
                     gVal += currAg.AllStatesDone[j + 1].Reward;
@@ -460,8 +482,22 @@ public class TestScript : MonoBehaviour
                 {
                     gVal += currAg.AllStatesDone[j].Reward;
                 }
-                //if ()
+                foreach (var curState in States)
+                {
+                    if (curState == currAg.AllStatesDone[j])
+                    {
+                        curState.ReturnsValue += gVal;
+                        curState.NValue += 1;
+                        break;
+                    }
+                }
             }
+
+        }
+
+        foreach (var curState in States)
+        {
+            curState.Value = curState.NValue == 0 ? 0 : curState.ReturnsValue / curState.NValue;
         }
     }
 }
