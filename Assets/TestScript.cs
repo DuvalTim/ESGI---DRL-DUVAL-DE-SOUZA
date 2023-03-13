@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
@@ -8,6 +9,9 @@ using Random = UnityEngine.Random;
 
 public class TestScript : MonoBehaviour
 {
+
+    private readonly string specifier = "E01";
+    private readonly CultureInfo culture = CultureInfo.CreateSpecificCulture("sv-SE");
     public GameObject Player;
 
     public uint MapDimension = 4;
@@ -46,6 +50,11 @@ public class TestScript : MonoBehaviour
     [SerializeField]
     private Slider UpdateTimeSlider;
 
+    [SerializeField]
+    private GameObject StartGameObject;
+    private Button StartButton;
+    private Text StartText;
+
     private void Update()
     {
         if (false)
@@ -64,12 +73,27 @@ public class TestScript : MonoBehaviour
 
     private void Start()
     {
+        StartButton = StartGameObject.GetComponent<Button>();
+        StartText = StartGameObject.GetComponentInChildren<Text>();
         GammaSliderDecrease.onValueChanged.AddListener(OnSliderValueChanged);
         StartValuePolicySlider.onValueChanged.AddListener(OnSliderValueChanged);
         UpdateTimeSlider.onValueChanged.AddListener(OnSliderValueChanged);
+        if (StartButton == null || StartText == null)
+        {
+            Debug.LogError("Null start button");
+        }
+        else
+        {
+            StartText.text = "Start";
+            StartButton.onClick.AddListener(OnStartButtonClick);
+        }
     }
 
-    public void StartPolItButtonClick()
+    private void OnPreCull()
+    {
+
+    }
+    private void OnStartButtonClick()
     {
         Play = !Play;
         if (Play)
@@ -79,11 +103,17 @@ public class TestScript : MonoBehaviour
         }
         else
         {
+            Play = !Play;
+            StartText.text = "------";
             StartCoroutine(AutoRestart());
         }
-        InitPolicy();
         gamma = 1.0f;
-        PolicyEvaluation();
+        // pol it
+        //InitPolicy();
+        //PolicyEvaluation();
+
+        // pol it
+        ValueIterationProcess();
     }
 
     private System.Collections.IEnumerator AutoRestart()
@@ -139,14 +169,19 @@ public class TestScript : MonoBehaviour
                 CaseDisplay[i * States.GetLength(0) + j].SetName(States[i, j].Name);
                 CaseDisplay[i * States.GetLength(0) + j].SetPosition(new Vector3(i, j, 0));
                 CaseDisplay[i * States.GetLength(0) + j].SetColor(States[i, j].Reward == 1 ? Color.green : (States[i, j].Reward == 0 ? Color.yellow : Color.red));
-                CaseDisplay[i * States.GetLength(0) + j].SetText("" + Math.Round(States[i, j].Value, 2));
+                CaseDisplay[i * States.GetLength(0) + j].SetText(FloatToString(States[i, j].Value));
             }
         }
     }
 
+    private string FloatToString(float value)
+    {
+        return Mathf.Abs(value) > 0.01f ? "" + Math.Round(value, 2) : value.ToString(specifier, culture);
+    }
+
     private void OnSliderValueChanged(float value)
     {
-        DebugText.text = $"{Math.Round(value, 3)}";
+        DebugText.text = FloatToString(value);
     }
 
     private void UpdatePlayerPosition()
@@ -165,6 +200,7 @@ public class TestScript : MonoBehaviour
 
     private void StartGame()
     {
+        StartText.text = "Restart";
         Agent = new Agent();
         States = new State[MapDimension, MapDimension];
         for (int i = 0; i < States.GetLength(0); i++)
@@ -223,6 +259,7 @@ public class TestScript : MonoBehaviour
             if (val)
             {
                 Play = false;
+                StartText.text = "Start";
                 UpdatePlayerPosition();
             }
         }
@@ -230,13 +267,13 @@ public class TestScript : MonoBehaviour
 
     private void RandomObstacles()
     {
-        for (int i = 0; i < States.GetLength(0) - 1; i++)
+        for (int i = 2; i < States.GetLength(0) - 1; i++)
         {
-            for (int j = 0; j < States.GetLength(1) - 1; j++)
+            for (int j = 2; j < States.GetLength(1) - 1; j++)
             {
                 if (Random.Range(0, 10) < 1.5f)
                 {
-                    States[i, j].Reward = -1;
+                    States[i, j].DefineAsObstacle(-1);
                 }
             }
         }
@@ -293,6 +330,48 @@ public class TestScript : MonoBehaviour
                     Debug.Log("Not optimal");
                     PolicyEvaluation();
                 }
+            }
+        }
+    }
+
+    private void ValueIterationProcess()
+    {
+        InitValueIt();
+        gamma = STARTGAMMA;
+        float delta;
+        uint count = 0;
+        do
+        {
+            delta = .0f;
+
+            for (int i = 0; i < States.GetLength(0); i++)
+            {
+                for (int j = 0; j < States.GetLength(1); j++)
+                {
+                    float temp = States[i, j].Value;
+                    States[i, j].GetMaxRewardStateValIt(gamma, out float value);
+                    States[i, j].Value = value;
+                    delta = Mathf.Max(delta, Mathf.Abs(temp - States[i, j].Value));
+                }
+            }
+            gamma = Mathf.Max(0.01f, gamma - GammaSliderDecrease.value);
+            count++;
+        } while (delta > THETA && count < MAX_ITERATION);
+        Debug.Log("COunt " + count);
+        Debug.Log("delta " + delta);
+    }
+
+    public float MAX_ITERATION = 1000;
+    public float THETA = 0.001f;
+    public float STARTGAMMA = .9f;
+    private void InitValueIt()
+    {
+        for (int i = 0; i < States.GetLength(0); i++)
+        {
+            for (int j = 0; j < States.GetLength(1); j++)
+            {
+                States[i, j].Value = StartValuePolicySlider.value;
+                //States[i, j].RandomPolicy();
             }
         }
     }
