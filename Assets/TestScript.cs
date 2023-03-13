@@ -21,6 +21,7 @@ public class TestScript : MonoBehaviour
     private Environment Environment = null;
     private Agent Agent;
     private State[,] States;
+    private List<Vector2> PreviousObstacleList;
     private bool Play = false;
     public bool DisplayReward = true;
 
@@ -32,9 +33,6 @@ public class TestScript : MonoBehaviour
 
     private List<CaseDisplay> CaseDisplay = new List<CaseDisplay>();
 
-
-    [SerializeField]
-    private Toggle ObstacleToggle;
 
     [SerializeField]
     private Text DebugText;
@@ -55,6 +53,8 @@ public class TestScript : MonoBehaviour
 
     [SerializeField]
     private Dropdown AlgoSelected;
+    [SerializeField]
+    private Dropdown ObsSelected;
 
     private Button StartButton;
     private Text StartText;
@@ -261,10 +261,34 @@ public class TestScript : MonoBehaviour
             }
         }
         States[States.GetLength(0) - 1, States.GetLength(1) - 1].Reward = 1.0f;
+
+        switch (ObsSelected.value)
+        {
+            case 2:
+                Debug.Log("No Obstacle");
+                break;
+            case 0:
+                Debug.Log("Random Obstacle");
+                RandomObstacles();
+                break;
+            case 1:
+                Debug.Log("Previous Obstacle");
+                UsePreviousObstacles();
+                break;
+            default:
+                // code block
+                break;
+        }
+
+        /*
         if (ObstacleToggle.isOn)
         {
             RandomObstacles();
         }
+        */
+       
+
+
         Environment = new Environment(States, States[0, 0], new State[] { States[States.GetLength(0) - 1, States.GetLength(1) - 1] });
         Environment.Init(Agent);
         Play = true;
@@ -290,6 +314,7 @@ public class TestScript : MonoBehaviour
 
     private void RandomObstacles()
     {
+       List<Vector2> ObstacleList = new List<Vector2>();
         for (int i = 2; i < States.GetLength(0) - 1; i++)
         {
             for (int j = 2; j < States.GetLength(1) - 1; j++)
@@ -297,8 +322,18 @@ public class TestScript : MonoBehaviour
                 if (Random.Range(0, 10) < 1.5f)
                 {
                     States[i, j].DefineAsObstacle(-1);
+                    ObstacleList.Add(new Vector2(i, j));
                 }
             }
+        }
+        PreviousObstacleList = new List<Vector2>(ObstacleList);
+    }
+
+    private void UsePreviousObstacles()
+    {
+        foreach(Vector2 c in PreviousObstacleList)
+        {
+            States[(int)c[0], (int)c[1]].DefineAsObstacle(-1);
         }
     }
 
