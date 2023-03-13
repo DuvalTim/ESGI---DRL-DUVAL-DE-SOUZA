@@ -17,6 +17,10 @@ public class TestScript : MonoBehaviour
     public uint MapDimension = 4;
     public float UpdateTime;
     private float LastUpdate = 0.0f;
+    public float MAX_ITERATION = 1000;
+    public float THETA = 0.001f;
+    public float STARTGAMMA = .9f;
+    private float GammaValue = 1.0f;
 
     private Environment Environment = null;
     private Agent Agent;
@@ -37,7 +41,6 @@ public class TestScript : MonoBehaviour
     [SerializeField]
     private Text DebugText;
 
-    private float gamma = 1.0f;
 
     [SerializeField]
     private Slider GammaSliderDecrease;
@@ -111,7 +114,7 @@ public class TestScript : MonoBehaviour
             StartText.text = "------";
             StartCoroutine(AutoRestart());
         }
-        gamma = 1.0f;
+        GammaValue = STARTGAMMA;
 
         
         switch (AlgoSelected.value)
@@ -280,15 +283,6 @@ public class TestScript : MonoBehaviour
                 break;
         }
 
-        /*
-        if (ObstacleToggle.isOn)
-        {
-            RandomObstacles();
-        }
-        */
-       
-
-
         Environment = new Environment(States, States[0, 0], new State[] { States[States.GetLength(0) - 1, States.GetLength(1) - 1] });
         Environment.Init(Agent);
         Play = true;
@@ -302,7 +296,7 @@ public class TestScript : MonoBehaviour
     {
         if (Play)
         {
-            var val = Environment.PolItStep();
+            var val = Environment.BestValueStep();
             if (val)
             {
                 Play = false;
@@ -362,13 +356,13 @@ public class TestScript : MonoBehaviour
                 for (int j = 0; j < States.GetLength(1); j++)
                 {
                     float temp = States[i, j].Value;
-                    States[i, j].Value = States[i, j].GetFuturValuePolIt(gamma);
+                    States[i, j].Value = States[i, j].GetFuturValuePolIt(GammaValue);
                     delta = Mathf.Max(delta, Mathf.Abs(temp - States[i, j].Value));
                 }
             }
-            gamma = Mathf.Max(0.01f, gamma - GammaSliderDecrease.value);
+            GammaValue = Mathf.Max(0.01f, GammaValue - GammaSliderDecrease.value);
             count++;
-        } while (delta < 0.01f && count < 10000);
+        } while (delta < MAX_ITERATION && count < MAX_ITERATION);
         Debug.Log("COunt " + count);
         Debug.Log("delta " + delta);
         PolicyOptimisation();
@@ -395,7 +389,7 @@ public class TestScript : MonoBehaviour
     private void ValueIterationProcess()
     {
         InitValueIt();
-        gamma = STARTGAMMA;
+        GammaValue = STARTGAMMA;
         float delta;
         uint count = 0;
         do
@@ -407,21 +401,18 @@ public class TestScript : MonoBehaviour
                 for (int j = 0; j < States.GetLength(1); j++)
                 {
                     float temp = States[i, j].Value;
-                    States[i, j].GetMaxRewardStateValIt(gamma, out float value);
+                    States[i, j].GetMaxRewardStateValIt(GammaValue, out float value);
                     States[i, j].Value = value;
                     delta = Mathf.Max(delta, Mathf.Abs(temp - States[i, j].Value));
                 }
             }
-            gamma = Mathf.Max(0.01f, gamma - GammaSliderDecrease.value);
+            GammaValue = Mathf.Max(0.01f, GammaValue - GammaSliderDecrease.value);
             count++;
         } while (delta > THETA && count < MAX_ITERATION);
         Debug.Log("COunt " + count);
         Debug.Log("delta " + delta);
     }
 
-    public float MAX_ITERATION = 1000;
-    public float THETA = 0.001f;
-    public float STARTGAMMA = .9f;
     private void InitValueIt()
     {
         for (int i = 0; i < States.GetLength(0); i++)
@@ -430,6 +421,46 @@ public class TestScript : MonoBehaviour
             {
                 States[i, j].Value = StartValuePolicySlider.value;
                 //States[i, j].RandomPolicy();
+            }
+        }
+    }
+
+
+    public int NbEpisodes = 10;
+    private void FirstVisitMCPrediction()
+    {
+        ValueIterationProcess();
+        Environment currEnv = Environment;
+
+        // reset stats
+        foreach(var item in States)
+        {
+            item.ReturnsValue = 0;
+            item.NValue = 0;
+        }
+
+        for (int i = 0; i < NbEpisodes; i++)
+        {
+            Agent currAg = Agent;
+            currEnv.Init(currAg);
+            bool finished;
+            do
+            {
+                finished = currEnv.BestValueStep();
+            } while (!finished);
+
+            float gVal = 0;
+            for (int j = currAg.AllStatesDone.Count - 1; j >= 0; j--)
+            {
+                try
+                {
+                    gVal += currAg.AllStatesDone[j + 1].Reward;
+                }
+                catch (Exception)
+                {
+                    gVal += currAg.AllStatesDone[j].Reward;
+                }
+                //if ()
             }
         }
     }

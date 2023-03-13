@@ -9,7 +9,7 @@ namespace Assets.DRL
         public State BeginState;
         public State[] EndStates;
         public Agent m_Agent;
-        public Action OnEndStateReached;
+        public event EventHandler OnEndStateReached;
 
         public Environment(State[,] allstates, State beginState, State[] endStates)
         {
@@ -24,7 +24,11 @@ namespace Assets.DRL
             m_Agent.Init(BeginState);
         }
 
-        public bool PolItStep()
+        /// <summary>
+        /// return true when finished
+        /// </summary>
+        /// <returns></returns>
+        public bool BestValueStep()
         {
             //State newState = m_Agent.State.GetRandomAction();
             State newState = m_Agent.State.MoveToBestValueArgMax();
@@ -33,7 +37,7 @@ namespace Assets.DRL
             {
                 if (newState == EndStates[i])
                 {
-                    OnEndStateReached?.Invoke();
+                    OnEndStateReached?.Invoke(this, null);
                     return true;
                 }
             }

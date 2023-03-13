@@ -8,6 +8,8 @@ namespace Assets.DRL
         public List<State> ReachableStates;
         public float Reward;
         public float Value { get; set; }
+        public float NValue { get; set; } = 0;
+        public float ReturnsValue { get; set; } = 0;
         public State BestActionState;
 
         public State(float reward, string name, float value = 0)
