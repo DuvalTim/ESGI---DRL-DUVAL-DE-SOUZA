@@ -61,6 +61,8 @@ public class TestScript : MonoBehaviour
 
     private Button StartButton;
     private Text StartText;
+    
+    private float StartTime;
 
     private void Update()
     {
@@ -96,14 +98,6 @@ public class TestScript : MonoBehaviour
             StartButton.onClick.AddListener(OnStartButtonClick);
         }
     }
-
-    private void OnPreCull()
-    {
-
-    }
-
-
-    private float StartTime;
     private void OnStartButtonClick()
     {
         Play = !Play;
@@ -133,7 +127,6 @@ public class TestScript : MonoBehaviour
                         InitPolicy();
                         PolicyEvaluation();
                     }).Start();
-                //FirstVisitMCPrediction();
                 break;
             case 1:
                 Debug.Log("Starting ValueIterationProcess");
@@ -147,14 +140,6 @@ public class TestScript : MonoBehaviour
                 // code block
                 break;
         }
-
-
-        // pol it
-        //InitPolicy();
-        //PolicyEvaluation();
-
-        // pol it
-
     }
 
     private System.Collections.IEnumerator AutoRestart()
