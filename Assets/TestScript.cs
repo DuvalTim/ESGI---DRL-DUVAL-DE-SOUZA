@@ -52,6 +52,10 @@ public class TestScript : MonoBehaviour
 
     [SerializeField]
     private GameObject StartGameObject;
+
+    [SerializeField]
+    private Dropdown AlgoSelected;
+
     private Button StartButton;
     private Text StartText;
 
@@ -108,12 +112,31 @@ public class TestScript : MonoBehaviour
             StartCoroutine(AutoRestart());
         }
         gamma = 1.0f;
+
+        
+        switch (AlgoSelected.value)
+        {
+            case 0:
+                Debug.Log("Starting InitPolicy");
+                InitPolicy();
+                PolicyEvaluation();
+                break;
+            case 1:
+                Debug.Log("Starting ValueIterationProcess");
+                ValueIterationProcess(); 
+                break;
+            default:
+                // code block
+                break;
+        }
+
+
         // pol it
         //InitPolicy();
         //PolicyEvaluation();
 
         // pol it
-        ValueIterationProcess();
+        
     }
 
     private System.Collections.IEnumerator AutoRestart()
