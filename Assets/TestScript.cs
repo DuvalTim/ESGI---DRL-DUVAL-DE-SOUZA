@@ -76,6 +76,7 @@ public class TestScript : MonoBehaviour
                 StepGame();
             }
         }
+        ThreadManager.Execute();
     }
 
     private void Start()
@@ -127,7 +128,8 @@ public class TestScript : MonoBehaviour
             case 0:
                 Debug.Log("FirstVisitMCPrediction");
                 new System.Threading.Thread(
-                    () => {
+                    () =>
+                    {
                         InitPolicy();
                         PolicyEvaluation();
                     }).Start();
@@ -136,7 +138,8 @@ public class TestScript : MonoBehaviour
             case 1:
                 Debug.Log("Starting ValueIterationProcess");
                 new System.Threading.Thread(
-                    () => {
+                    () =>
+                    {
                         ValueIterationProcess();
                     }).Start();
                 break;
@@ -397,8 +400,11 @@ public class TestScript : MonoBehaviour
                 }
             }
         }
-        DebugText.text = "Finish";
-        Debug.Log($"Play time :{Time.time - StartTime}");
+        ThreadManager.AddAction(() =>
+        {
+            DebugText.text = "Finish";
+            Debug.Log($"Play time :{Time.time - StartTime}");
+        });
     }
 
     private void ValueIterationProcess()
@@ -426,8 +432,11 @@ public class TestScript : MonoBehaviour
         } while (delta > THETA && count < MAX_ITERATION);
         Debug.Log("COunt " + count);
         Debug.Log("delta " + delta);
-        DebugText.text = "Finish"; 
-        Debug.Log($"Play time :{Time.time - StartTime}");
+        ThreadManager.AddAction(() =>
+        {
+            DebugText.text = "Finish";
+            Debug.Log($"Play time :{Time.time - StartTime}");
+        });
     }
 
     private void InitValueIt()
@@ -498,6 +507,41 @@ public class TestScript : MonoBehaviour
         foreach (var curState in States)
         {
             curState.Value = curState.NValue == 0 ? 0 : curState.ReturnsValue / curState.NValue;
+        }
+    }
+}
+
+
+public static class ThreadManager
+{
+    private static Queue<Action> ToExecute = new Queue<Action>();
+    private static Queue<Action> Copy = new Queue<Action>();
+    private static bool Empty = true;
+
+    public static void AddAction(Action toAdd)
+    {
+        lock (ToExecute)
+        {
+            ToExecute.Enqueue(toAdd);
+            Empty = false;
+        }
+    }
+
+    internal static void Execute()
+    {
+        if (!Empty)
+        {
+            lock (ToExecute)
+            {
+                Copy = ToExecute;
+                ToExecute = new Queue<Action>();
+                Empty = true;
+            }
+            lock (Copy)
+            {
+                var action = Copy.Dequeue();
+                action?.Invoke();
+            }
         }
     }
 }
