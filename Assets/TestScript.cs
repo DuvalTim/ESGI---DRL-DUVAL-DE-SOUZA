@@ -315,11 +315,11 @@ public class TestScript : MonoBehaviour
     private void RandomObstacles()
     {
        List<Vector2> ObstacleList = new List<Vector2>();
-        for (int i = 2; i < States.GetLength(0) - 1; i++)
+        for (int i = 0; i < States.GetLength(0) - 1; i++)
         {
-            for (int j = 2; j < States.GetLength(1) - 1; j++)
+            for (int j = 0; j < States.GetLength(1) - 1; j++)
             {
-                if (Random.Range(0, 10) < 1.5f)
+                if (Random.Range(0, 10) < 1.5f && !(i<2 && j<2 ))
                 {
                     States[i, j].DefineAsObstacle(-1);
                     ObstacleList.Add(new Vector2(i, j));
