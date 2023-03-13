@@ -115,7 +115,7 @@ public class TestScript : MonoBehaviour
         else
         {
             Play = !Play;
-            StartText.text = "------";
+            StartText.text = "Play";
             StartCoroutine(AutoRestart());
         }
         GammaValue = STARTGAMMA;
@@ -507,41 +507,6 @@ public class TestScript : MonoBehaviour
         foreach (var curState in States)
         {
             curState.Value = curState.NValue == 0 ? 0 : curState.ReturnsValue / curState.NValue;
-        }
-    }
-}
-
-
-public static class ThreadManager
-{
-    private static Queue<Action> ToExecute = new Queue<Action>();
-    private static Queue<Action> Copy = new Queue<Action>();
-    private static bool Empty = true;
-
-    public static void AddAction(Action toAdd)
-    {
-        lock (ToExecute)
-        {
-            ToExecute.Enqueue(toAdd);
-            Empty = false;
-        }
-    }
-
-    internal static void Execute()
-    {
-        if (!Empty)
-        {
-            lock (ToExecute)
-            {
-                Copy = ToExecute;
-                ToExecute = new Queue<Action>();
-                Empty = true;
-            }
-            lock (Copy)
-            {
-                var action = Copy.Dequeue();
-                action?.Invoke();
-            }
         }
     }
 }
